@@ -5,11 +5,11 @@ const app = express();
 const port = process.env.PORT || 3000;
 const dynamoClient = new DynamoDBClient({ region: 'us-east-1' });
 
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.status(200).send('OK');
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'healthy' });
 });
 

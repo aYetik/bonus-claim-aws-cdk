@@ -7,11 +7,11 @@ const dynamoClient = new DynamoDBClient({ region: 'us-east-1' });
 
 app.use(express.json());
 
-app.get('/', (req, res) => {
+app.get('/', async (req: Request, res: Response) => {
   res.status(200).send('OK');
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'healthy' });
 });
 
