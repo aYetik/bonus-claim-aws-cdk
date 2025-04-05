@@ -21,22 +21,21 @@ const envConfig = {
 
 const currentEnv = envConfig[envType];
 
-//deploy the VPC stack
-const vpcStack = new VpcStack(app, 'EveryrealmVpcStack', {
+const envSuffix = envType.charAt(0).toUpperCase() + envType.slice(1); // "Dev" or "Prod" (different stacks for different environments)
+//different naming for different environments is not needed if already using different aws accounts credentials for different environments
+
+const vpcStack = new VpcStack(app, `EveryrealmVpcStack${envSuffix}`, {
   env: currentEnv.env,
 });
 
-//deploy the DynamoDB stack
-const dynamoStack = new DynamoDBStack(app, 'EveryrealmDynamoDBStack', {
+const dynamoStack = new DynamoDBStack(app, `EveryrealmDynamoDBStack${envSuffix}`, {
   env: currentEnv.env,
   removalPolicy: currentEnv.removalPolicy,
 });
 
-//deploy ECS stack
-//pass the VPC and DynamoDB table name to the ECS stack
-new EcsStack(app, 'EveryrealmEcsStack', {
+new EcsStack(app, `EveryrealmEcsStack${envSuffix}`, {
   env: currentEnv.env,
   vpc: vpcStack.vpc,
   table: dynamoStack.table,
-  region: currentEnv.env.region,
+  region,
 });

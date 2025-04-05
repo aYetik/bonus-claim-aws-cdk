@@ -4,16 +4,19 @@ on:
   push:
     branches:
       - master
+      - dev
 
 env:
   AWS_REGION: us-east-1
-  ENV: dev
   USER_SERVICE_REPO: user-service
   ADMIN_SERVICE_REPO: admin-service
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    env:
+      ENV: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
 
     steps:
       - name: Checkout source code

@@ -14,7 +14,7 @@ export class DynamoDBStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: DynamoDBStackProps) {
     super(scope, id, props);
 
-    const table = new dynamodb.TableV2(this, 'BonusClaimsTableV2', {
+    const table = new dynamodb.TableV2(this, 'BonusClaimsTable', {
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billing: dynamodb.Billing.onDemand(),
