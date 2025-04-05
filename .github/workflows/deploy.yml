@@ -1,0 +1,60 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  AWS_REGION: us-east-1
+  ENV: dev
+  USER_SERVICE_REPO: user-service
+  ADMIN_SERVICE_REPO: admin-service
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build CDK app
+        run: npm run build
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push user-service Docker image
+        run: |
+          docker build -t $USER_SERVICE_REPO ./services/user-service
+          docker tag $USER_SERVICE_REPO:latest ${{ steps.login-ecr.outputs.registry }}/${{ env.USER_SERVICE_REPO }}:latest
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.USER_SERVICE_REPO }}:latest
+
+      - name: Build, tag, and push admin-service Docker image
+        run: |
+          docker build -t $ADMIN_SERVICE_REPO ./services/admin-service
+          docker tag $ADMIN_SERVICE_REPO:latest ${{ steps.login-ecr.outputs.registry }}/${{ env.ADMIN_SERVICE_REPO }}:latest
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ADMIN_SERVICE_REPO }}:latest
+
+      - name: Deploy CDK Stack
+        run: cdk deploy --all --require-approval never --context env=${{ env.ENV }}
