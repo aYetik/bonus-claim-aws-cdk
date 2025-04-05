@@ -1,20 +1,41 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
-import { EveryrealmCdkTaskStack } from '../lib/everyrealm-cdk-task-stack';
+import { DynamoDBStack } from '../lib/dynamodb-stack';
+import { VpcStack } from '../lib/vpc-stack';
+import { EcsStack } from '../lib/ecs-stack';
 
 const app = new cdk.App();
-new EveryrealmCdkTaskStack(app, 'EveryrealmCdkTaskStack', {
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
+const envType = (app.node.tryGetContext('env') || 'dev') as 'dev' | 'prod';
+const region = 'us-east-1';
 
-  /* Uncomment the next line to specialize this stack for the AWS Account
-   * and Region that are implied by the current CLI configuration. */
-  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+const envConfig = {
+  dev: {
+    env: { region },
+    removalPolicy: cdk.RemovalPolicy.DESTROY,
+  },
+  prod: {
+    env: { region },
+    removalPolicy: cdk.RemovalPolicy.RETAIN,
+  },
+};
 
-  /* Uncomment the next line if you know exactly what Account and Region you
-   * want to deploy the stack to. */
-  // env: { account: '123456789012', region: 'us-east-1' },
+const currentEnv = envConfig[envType];
 
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+const envSuffix = envType.charAt(0).toUpperCase() + envType.slice(1); // "Dev" or "Prod" (different stacks for different environments)
+//different naming for different environments is not needed if already using different aws accounts credentials for different environments
+
+const vpcStack = new VpcStack(app, `EveryrealmVpcStack${envSuffix}`, {
+  env: currentEnv.env,
+});
+
+const dynamoStack = new DynamoDBStack(app, `EveryrealmDynamoDBStack${envSuffix}`, {
+  env: currentEnv.env,
+  removalPolicy: currentEnv.removalPolicy,
+});
+
+new EcsStack(app, `EveryrealmEcsStack${envSuffix}`, {
+  env: currentEnv.env,
+  vpc: vpcStack.vpc,
+  table: dynamoStack.table,
+  region,
 });
