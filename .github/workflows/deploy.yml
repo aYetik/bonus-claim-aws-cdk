@@ -58,6 +58,9 @@ jobs:
           docker build -t $ADMIN_SERVICE_REPO ./services/admin-service
           docker tag $ADMIN_SERVICE_REPO:latest ${{ steps.login-ecr.outputs.registry }}/${{ env.ADMIN_SERVICE_REPO }}:latest
           docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ADMIN_SERVICE_REPO }}:latest
+          
+      - name: CDK Bootstrap
+        run: cdk bootstrap aws://$(aws sts get-caller-identity --query Account --output text)/${{ env.AWS_REGION }}
 
       - name: Deploy CDK Stack
         run: cdk deploy --all --require-approval never --context env=${{ env.ENV }}
