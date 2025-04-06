@@ -34,7 +34,7 @@ const dynamoStack = new DynamoDBStack(app, `EveryrealmDynamoDBStack${envSuffix}`
   removalPolicy: currentEnv.removalPolicy,
 });
 
-new EcsStack(app, `EveryrealmEcsStack${envSuffix}`, {
+new EcsStack(app, `EveryrealmEcsStack2${envSuffix}`, {
   env: currentEnv.env,
   vpc: vpcStack.vpc,
   table: dynamoStack.table,
