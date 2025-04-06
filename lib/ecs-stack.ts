@@ -88,12 +88,6 @@ export class EcsStack extends cdk.Stack {
       unhealthyThresholdCount: 2,
     });
 
-    new route53.ARecord(this, 'UserServiceAliasRecord', {
-      zone: hostedZone,
-      recordName: `user${suffix}`,
-      target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(userService.loadBalancer)),
-    });
-
     //ADMIN SERVICE
     const adminRepo = ecr.Repository.fromRepositoryName(this, 'AdminRepo', 'admin-service');
     const adminService = new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'AdminService', {
@@ -130,12 +124,6 @@ export class EcsStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(5),
       healthyThresholdCount: 2,
       unhealthyThresholdCount: 2,
-    });
-
-    new route53.ARecord(this, 'AdminServiceAliasRecord', {
-      zone: hostedZone,
-      recordName: `admin${suffix}`,
-      target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(adminService.loadBalancer)),
     });
   }
 }
