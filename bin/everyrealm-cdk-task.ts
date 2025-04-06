@@ -3,6 +3,7 @@ import * as cdk from 'aws-cdk-lib';
 import { DynamoDBStack } from '../lib/dynamodb-stack';
 import { VpcStack } from '../lib/vpc-stack';
 import { EcsStack } from '../lib/ecs-stack';
+import * as route53 from 'aws-cdk-lib/aws-route53';
 
 const app = new cdk.App();
 const envType = (app.node.tryGetContext('env') || 'dev') as 'dev' | 'prod';
@@ -33,9 +34,15 @@ const dynamoStack = new DynamoDBStack(app, `EveryrealmDynamoDBStack${envSuffix}`
   removalPolicy: currentEnv.removalPolicy,
 });
 
+const hostedZone = route53.HostedZone.fromLookup(app, 'YetikHostedZone', {
+  domainName: 'yetik.net',
+});
+
 new EcsStack(app, `EveryrealmEcsStack${envSuffix}`, {
   env: currentEnv.env,
   vpc: vpcStack.vpc,
   table: dynamoStack.table,
   region,
+  hostedZone,
+  envName: envType,
 });

@@ -6,11 +6,15 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ecs_patterns from 'aws-cdk-lib/aws-ecs-patterns';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as targets from 'aws-cdk-lib/aws-route53-targets';
 
 interface EcsStackProps extends cdk.StackProps {
   vpc: ec2.IVpc;
   table: dynamodb.ITable;
   region: string;
+  hostedZone: route53.IHostedZone;
+  envName: string;
 }
 
 export class EcsStack extends cdk.Stack {
@@ -93,6 +97,21 @@ export class EcsStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(5),
       healthyThresholdCount: 2,
       unhealthyThresholdCount: 2,
+    });
+
+    // Hosted zone records
+    const suffix = props.envName === 'dev' ? '-dev' : '';
+
+    new route53.ARecord(this, 'UserServiceAliasRecord', {
+      zone: props.hostedZone,
+      recordName: `user${suffix}`,
+      target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(userService.loadBalancer)),
+    });
+
+    new route53.ARecord(this, 'AdminServiceAliasRecord', {
+      zone: props.hostedZone,
+      recordName: `admin${suffix}`,
+      target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(adminService.loadBalancer)),
     });
   }
 }
