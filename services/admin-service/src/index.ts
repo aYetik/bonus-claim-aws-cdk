@@ -18,11 +18,14 @@ app.get('/get-bonus-claim', async (req: Request, res: Response) => {
     const tableName = process.env.TABLE_NAME;
     if (!tableName) return res.status(500).send('TABLE_NAME env var not set');
 
+    const userId = req.query.userId ? `USER#${req.query.userId}` : 'USER#100';
+    const bonusId = req.query.bonusId ? `BONUS#${req.query.bonusId}` : 'BONUS#DEMO';
+
     const command = new GetItemCommand({
       TableName: tableName,
       Key: {
-        PK: { S: 'USER#100' },
-        SK: { S: 'BONUS#DEMO' }
+        PK: { S: userId },
+        SK: { S: bonusId }
       }
     });
 
@@ -33,8 +36,8 @@ app.get('/get-bonus-claim', async (req: Request, res: Response) => {
     }
 
     return res.status(200).json({
-      PK: result.Item.PK.S,
-      SK: result.Item.SK.S,
+      userId: result.Item.PK.S,
+      bonusId: result.Item.SK.S,
       status: result.Item.status?.S,
       timestamp: result.Item.timestamp?.S
     });
