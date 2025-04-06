@@ -34,21 +34,10 @@ const dynamoStack = new DynamoDBStack(app, `EveryrealmDynamoDBStack${envSuffix}`
   removalPolicy: currentEnv.removalPolicy,
 });
 
-// We have cdk bootstrap in the pipeline so we need to skip to run cdk code like hostedzone.fromlookup
-// This is a workaround for the issue where cdk bootstrap command fails while trying to run cdk code hostedzone.fromlookup
-if (app.node.tryGetContext('env')) {
-  const hostedZone = route53.HostedZone.fromLookup(app, 'YetikHostedZone', {
-    domainName: 'yetik.net',
-  });
-
-  new EcsStack(app, `EveryrealmEcsStack${envSuffix}`, {
-    env: currentEnv.env,
-    vpc: vpcStack.vpc,
-    table: dynamoStack.table,
-    region,
-    hostedZone,
-    envName: envType,
-  });
-} else {
-  console.log('Skipping hosted zone and ecs synthesis — probably running `cdk bootstrap`');
-}
+new EcsStack(app, `EveryrealmEcsStack${envSuffix}`, {
+  env: currentEnv.env,
+  vpc: vpcStack.vpc,
+  table: dynamoStack.table,
+  region,
+  envName: envType,
+});

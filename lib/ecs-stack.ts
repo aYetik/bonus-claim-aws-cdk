@@ -13,7 +13,6 @@ interface EcsStackProps extends cdk.StackProps {
   vpc: ec2.IVpc;
   table: dynamodb.ITable;
   region: string;
-  hostedZone: route53.IHostedZone;
   envName: string;
 }
 
@@ -99,17 +98,21 @@ export class EcsStack extends cdk.Stack {
       unhealthyThresholdCount: 2,
     });
 
-    // Hosted zone records
+    // Hosted zone
+    const hostedZone = route53.HostedZone.fromLookup(this, 'YetikHostedZone', {
+      domainName: 'yetik.net',
+    });
+
     const suffix = props.envName === 'dev' ? '-dev' : '';
 
     new route53.ARecord(this, 'UserServiceAliasRecord', {
-      zone: props.hostedZone,
+      zone: hostedZone,
       recordName: `user${suffix}`,
       target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(userService.loadBalancer)),
     });
 
     new route53.ARecord(this, 'AdminServiceAliasRecord', {
-      zone: props.hostedZone,
+      zone: hostedZone,
       recordName: `admin${suffix}`,
       target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(adminService.loadBalancer)),
     });
