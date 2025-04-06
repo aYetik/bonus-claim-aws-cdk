@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, GetItemCommand, QueryCommand, ScanCommand } from '@aws-sdk/client-dynamodb';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -44,6 +44,71 @@ app.get('/get-bonus-claim', async (req: Request, res: Response) => {
   } catch (err) {
     console.error(err);
     return res.status(500).send('Failed to fetch bonus claim');
+  }
+});
+
+app.get('/list-bonus-claims', async (req: Request, res: Response) => {
+  try {
+    const tableName = process.env.TABLE_NAME;
+    if (!tableName) return res.status(500).send('TABLE_NAME env var not set');
+
+    const userId = typeof req.query.userId === 'string' ? req.query.userId.trim() : undefined;
+    const bonusId = typeof req.query.bonusId === 'string' ? req.query.bonusId.trim() : undefined;
+
+    let items = [];
+
+    if (userId && bonusId) {
+      // Query by PK and SK
+      const command = new QueryCommand({
+        TableName: tableName,
+        KeyConditionExpression: 'PK = :pk AND SK = :sk',
+        ExpressionAttributeValues: {
+          ':pk': { S: `USER#${userId}` },
+          ':sk': { S: `BONUS#${bonusId}` }
+        }
+      });
+      const result = await dynamoClient.send(command);
+      items = result.Items || [];
+    } else if (userId) {
+      // Query by PK only
+      const command = new QueryCommand({
+        TableName: tableName,
+        KeyConditionExpression: 'PK = :pk',
+        ExpressionAttributeValues: {
+          ':pk': { S: `USER#${userId}` }
+        }
+      });
+      const result = await dynamoClient.send(command);
+      items = result.Items || [];
+    } else if (bonusId) {
+      // Scan and filter by SK
+      const command = new ScanCommand({
+        TableName: tableName,
+        FilterExpression: 'SK = :sk',
+        ExpressionAttributeValues: {
+          ':sk': { S: `BONUS#${bonusId}` }
+        }
+      });
+      const result = await dynamoClient.send(command);
+      items = result.Items || [];
+    } else {
+      // No filters
+      const command = new ScanCommand({ TableName: tableName });
+      const result = await dynamoClient.send(command);
+      items = result.Items || [];
+    }
+
+    const formatted = items.map((item) => ({
+      userId: item.PK?.S?.replace('USER#', ''),
+      bonusId: item.SK?.S?.replace('BONUS#', ''),
+      status: item.status?.S,
+      timestamp: item.timestamp?.S
+    }));
+
+    return res.status(200).json({ count: formatted.length, items: formatted });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send('Failed to fetch bonus claims');
   }
 });
 
