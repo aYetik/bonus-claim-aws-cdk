@@ -95,12 +95,11 @@ The shared table uses composite keys.
 
 ### Sample Data Inserted via Lambda
 ```json
-{
-  "PK": { "S": "USER#100" },
-  "SK": { "S": "BONUS#DEMO" },
-  "status": { "S": "CLAIMED" },
-  "timestamp": { "S": "2025-04-06T12:00:00Z" }
-}
+[
+  { "PK": "USER#1", "SK": "BONUS#A", "status": "CLAIMED" },
+  { "PK": "USER#2", "SK": "BONUS#B", "status": "PENDING" },
+  { "PK": "USER#3", "SK": "BONUS#C", "status": "COMPLETED" }
+]
 ```
 
 ---
