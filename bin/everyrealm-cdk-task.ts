@@ -11,11 +11,11 @@ const region = 'us-east-1';
 
 const envConfig = {
   dev: {
-    env: { region },
+    env: { account: process.env.CDK_DEFAULT_ACCOUNT, region },
     removalPolicy: cdk.RemovalPolicy.DESTROY,
   },
   prod: {
-    env: { region },
+    env: { account: process.env.CDK_DEFAULT_ACCOUNT, region },
     removalPolicy: cdk.RemovalPolicy.RETAIN,
   },
 };
