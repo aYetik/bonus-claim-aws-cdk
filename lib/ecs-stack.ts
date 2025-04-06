@@ -54,6 +54,7 @@ export class EcsStack extends cdk.Stack {
     });
 
     props.table.grantReadWriteData(taskRole);
+    const deploymentHash = Date.now().toString(); //forces new deployment on every stack update (changing it to deploying only when the code changes would be good future improvement)
 
     //USER SERVICE CONFIGURATION
     const userRepo = ecr.Repository.fromRepositoryName(this, 'UserRepo', 'user-service');
@@ -69,6 +70,7 @@ export class EcsStack extends cdk.Stack {
         environment: {
           TABLE_NAME: props.table.tableName,
           AWS_REGION: props.region,
+          DEPLOYMENT_HASH: deploymentHash,
         },
         taskRole,
         executionRole: new iam.Role(this, 'UserServiceExecutionRole', {
@@ -108,6 +110,7 @@ export class EcsStack extends cdk.Stack {
         environment: {
           TABLE_NAME: props.table.tableName,
           AWS_REGION: props.region,
+          DEPLOYMENT_HASH: deploymentHash,
         },
         taskRole,
         executionRole: new iam.Role(this, 'AdminServiceExecutionRole', {

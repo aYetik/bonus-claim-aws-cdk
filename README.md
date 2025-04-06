@@ -184,6 +184,7 @@ env:
 - Monitoring & Logging with AWS CloudWatch
 - CI/CD Enhancements, require succesful build before merge etc
 - Add backup and restore strategy for DynamoDB
+- Improve CDK Deployments time potentially deploying containers only when something is changed
 
 ---
 
