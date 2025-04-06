@@ -6,43 +6,50 @@ import { EcsStack } from '../lib/ecs-stack';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 
 const app = new cdk.App();
-const envType = (app.node.tryGetContext('env') || 'dev') as 'dev' | 'prod';
-const region = 'us-east-1';
+const envType = app.node.tryGetContext('env') as 'dev' | 'prod';
 
-const envConfig = {
-  dev: {
-    env: { region },
-    removalPolicy: cdk.RemovalPolicy.DESTROY,
-  },
-  prod: {
-    env: { region },
-    removalPolicy: cdk.RemovalPolicy.RETAIN,
-  },
-};
+// We have cdk bootstrap in the pipeline so we need to skip the stack synthesis if we are running cdk bootstrap command
+// This is a workaround for the issue where cdk bootstrap command fails while trying to run cdk code like hostedzone.fromlookup
+if (envType) {
+  const region = 'us-east-1';
 
-const currentEnv = envConfig[envType];
+  const envConfig = {
+    dev: {
+      env: { region },
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    },
+    prod: {
+      env: { region },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    },
+  };
 
-const envSuffix = envType.charAt(0).toUpperCase() + envType.slice(1); // "Dev" or "Prod" (different stacks for different environments)
-//different naming for different environments is not needed if already using different aws accounts credentials for different environments
+  const currentEnv = envConfig[envType];
 
-const vpcStack = new VpcStack(app, `EveryrealmVpcStack${envSuffix}`, {
-  env: currentEnv.env,
-});
+  const envSuffix = envType.charAt(0).toUpperCase() + envType.slice(1); // "Dev" or "Prod" (different stacks for different environments)
+  //different naming for different environments is not needed if already using different aws accounts credentials for different environments
 
-const dynamoStack = new DynamoDBStack(app, `EveryrealmDynamoDBStack${envSuffix}`, {
-  env: currentEnv.env,
-  removalPolicy: currentEnv.removalPolicy,
-});
+  const vpcStack = new VpcStack(app, `EveryrealmVpcStack${envSuffix}`, {
+    env: currentEnv.env,
+  });
 
-const hostedZone = route53.HostedZone.fromLookup(app, 'YetikHostedZone', {
-  domainName: 'yetik.net',
-});
+  const dynamoStack = new DynamoDBStack(app, `EveryrealmDynamoDBStack${envSuffix}`, {
+    env: currentEnv.env,
+    removalPolicy: currentEnv.removalPolicy,
+  });
 
-new EcsStack(app, `EveryrealmEcsStack${envSuffix}`, {
-  env: currentEnv.env,
-  vpc: vpcStack.vpc,
-  table: dynamoStack.table,
-  region,
-  hostedZone,
-  envName: envType,
-});
+  const hostedZone = route53.HostedZone.fromLookup(app, 'YetikHostedZone', {
+    domainName: 'yetik.net',
+  });
+
+  new EcsStack(app, `EveryrealmEcsStack${envSuffix}`, {
+    env: currentEnv.env,
+    vpc: vpcStack.vpc,
+    table: dynamoStack.table,
+    region,
+    hostedZone,
+    envName: envType,
+  });
+} else {
+  console.log('Skipping stack synthesis — probably running `cdk bootstrap`');
+}
