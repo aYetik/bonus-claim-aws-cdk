@@ -7,34 +7,37 @@ const dynamoClient = new DynamoDBClient({ region: 'us-east-1' });
 
 app.use(express.json());
 
+// Basic health check endpoint
 app.get('/', async (req: Request, res: Response) => {
   res.status(200).send('OK');
 });
 
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'healthy' });
-});
-
+// Add a bonus claim entry into DynamoDB with optional userId and bonusId
 app.post('/add-bonus-claim', async (req: Request, res: Response) => {
   try {
     const tableName = process.env.TABLE_NAME;
     if (!tableName) return res.status(500).send('TABLE_NAME env var not set');
 
-    const userId = 'USER#100';
-    const bonusId = 'BONUS#DEMO';
+    const { userId, bonusId } = req.body;
+
+    // Apply fallback to dummy values if userId and/or bonusId not provided in request
+    const finalUserId = userId ? `USER#${userId}` : 'USER#100';
+    const finalBonusId = bonusId ? `BONUS#${bonusId}` : 'BONUS#DEMO';
 
     const command = new PutItemCommand({
       TableName: tableName,
       Item: {
-        PK: { S: userId },
-        SK: { S: bonusId },
+        PK: { S: finalUserId },
+        SK: { S: finalBonusId },
         status: { S: 'CLAIMED' },
         timestamp: { S: new Date().toISOString() }
       }
     });
-
+    // Send item to DynamoDB
     await dynamoClient.send(command);
-    return res.status(200).send('Bonus claim added');
+    
+    // Return confirmation
+    return res.status(200).json({ message: 'Bonus claim added', userId: finalUserId, bonusId: finalBonusId });
   } catch (err) {
     console.error(err);
     return res.status(500).send('Failed to insert claim');
