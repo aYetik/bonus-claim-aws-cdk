@@ -180,6 +180,10 @@ env:
 ## ✅ Improvements for Production Readiness
 - Add input validations
 - Require authentication for endpoints
+- Rate limiting
+- Monitoring & Logging with AWS CloudWatch
+- CI/CD Enhancements, require succesful build before merge etc
+- Add backup and restore strategy for DynamoDB
 
 ---
 
