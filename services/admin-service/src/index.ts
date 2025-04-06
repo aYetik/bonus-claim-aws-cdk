@@ -5,19 +5,20 @@ const app = express();
 const port = process.env.PORT || 3000;
 const dynamoClient = new DynamoDBClient({ region: 'us-east-1' });
 
+app.use(express.json());
+
+// Basic health check endpoint
 app.get('/', (req: Request, res: Response) => {
   res.status(200).send('OK');
 });
 
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'healthy' });
-});
-
+// Retrieve a specific bonus claim using optional userId and bonusId query params
 app.get('/get-bonus-claim', async (req: Request, res: Response) => {
   try {
     const tableName = process.env.TABLE_NAME;
     if (!tableName) return res.status(500).send('TABLE_NAME env var not set');
 
+    // Use provided query params or fallback to default values
     const userId = req.query.userId ? `USER#${req.query.userId}` : 'USER#100';
     const bonusId = req.query.bonusId ? `BONUS#${req.query.bonusId}` : 'BONUS#DEMO';
 
@@ -47,6 +48,7 @@ app.get('/get-bonus-claim', async (req: Request, res: Response) => {
   }
 });
 
+// List bonus claims with optional filtering by userId and/or bonusId
 app.get('/list-bonus-claims', async (req: Request, res: Response) => {
   try {
     const tableName = process.env.TABLE_NAME;
@@ -58,7 +60,7 @@ app.get('/list-bonus-claims', async (req: Request, res: Response) => {
     let items = [];
 
     if (userId && bonusId) {
-      // Query by PK and SK
+      // Query using both PK and SK if both are provided
       const command = new QueryCommand({
         TableName: tableName,
         KeyConditionExpression: 'PK = :pk AND SK = :sk',
@@ -70,7 +72,7 @@ app.get('/list-bonus-claims', async (req: Request, res: Response) => {
       const result = await dynamoClient.send(command);
       items = result.Items || [];
     } else if (userId) {
-      // Query by PK only
+      // Query using PK only, if only userId is provided
       const command = new QueryCommand({
         TableName: tableName,
         KeyConditionExpression: 'PK = :pk',
@@ -81,7 +83,7 @@ app.get('/list-bonus-claims', async (req: Request, res: Response) => {
       const result = await dynamoClient.send(command);
       items = result.Items || [];
     } else if (bonusId) {
-      // Scan and filter by SK
+       // Use Scan if only bonusId is provided (less efficient, but acceptable at small scale)
       const command = new ScanCommand({
         TableName: tableName,
         FilterExpression: 'SK = :sk',
@@ -92,7 +94,7 @@ app.get('/list-bonus-claims', async (req: Request, res: Response) => {
       const result = await dynamoClient.send(command);
       items = result.Items || [];
     } else {
-      // No filters
+      // No filters provided: scan all items
       const command = new ScanCommand({ TableName: tableName });
       const result = await dynamoClient.send(command);
       items = result.Items || [];

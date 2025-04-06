@@ -9,7 +9,7 @@ interface DynamoDBStackProps extends cdk.StackProps {
 }
 
 export class DynamoDBStack extends cdk.Stack {
-  public readonly table: dynamodb.ITable;
+  public readonly table: dynamodb.ITable; //exposed so other stacks (like ECS) can access it
 
   constructor(scope: Construct, id: string, props: DynamoDBStackProps) {
     super(scope, id, props);
@@ -33,12 +33,14 @@ export class DynamoDBStack extends cdk.Stack {
       },
     });
 
-    table.grantWriteData(insertLambda);
+    table.grantWriteData(insertLambda); //permission to write (least privilege principle)
 
+    // Use a Custom Resource to invoke the Lambda during stack creation
     const provider = new cr.Provider(this, 'InsertItemsProvider', {
       onEventHandler: insertLambda,
     });
 
+    // Trigger the Lambda once during deployment to populate the table with dummy data
     new cdk.CustomResource(this, 'InsertSampleDataCustomResource', {
       serviceToken: provider.serviceToken,
     });

@@ -14,21 +14,25 @@ interface EcsStackProps extends cdk.StackProps {
   vpc: ec2.IVpc;
   table: dynamodb.ITable;
   region: string;
-  envName: string; // 'dev' or 'prod'
+  envName: string; //dev or prod
 }
 
 export class EcsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: EcsStackProps) {
     super(scope, id, props);
 
+    // Hosted zone lookup for domain-based routing and certificate validation
+    // This assumes you have a hosted zone for your domain in Route 53 (yetik.net registered with an external registrar and ns records set to AWS Route 53)
     const hostedZone = route53.HostedZone.fromLookup(this, 'YetikHostedZone', {
       domainName: 'yetik.net',
     });
 
+    // Suffix to distinguish between dev/prod deployments (e.g. user-dev.yetik.net vs user.yetik.net)
     const suffix = props.envName === 'dev' ? '-dev' : '';
     const userDomain = `user${suffix}.yetik.net`;
     const adminDomain = `admin${suffix}.yetik.net`;
 
+    // Issue ACM certificates per service with DNS validation for HTTPS support
     const userCert = new certificatemanager.Certificate(this, 'UserCert', {
       domainName: userDomain,
       validation: certificatemanager.CertificateValidation.fromDns(hostedZone),
@@ -39,18 +43,19 @@ export class EcsStack extends cdk.Stack {
       validation: certificatemanager.CertificateValidation.fromDns(hostedZone),
     });
 
-
+    // Shared ECS cluster for both services
     const cluster = new ecs.Cluster(this, 'EveryrealmCluster', {
       vpc: props.vpc,
     });
 
+    // IAM role for tasks to interact with DynamoDB using least-privilege
     const taskRole = new iam.Role(this, 'FargateTaskRole', {
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
     });
 
     props.table.grantReadWriteData(taskRole);
 
-    //USER SERVICE
+    //USER SERVICE CONFIGURATION
     const userRepo = ecr.Repository.fromRepositoryName(this, 'UserRepo', 'user-service');
     const userService = new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'UserService', {
       cluster,
@@ -73,22 +78,23 @@ export class EcsStack extends cdk.Stack {
           ],
         }),
       },
-      domainName: userDomain,
-      domainZone: hostedZone,
-      certificate: userCert,
+      domainName: userDomain, //assign custom domain name
+      domainZone: hostedZone, //Route53 zone
+      certificate: userCert, //certificate for HTTPS
       redirectHTTP: true,
       publicLoadBalancer: true,
     });
 
+    // Health check to ensure ECS tasks are responsive, also needed to succesfully finish the deployment
     userService.targetGroup.configureHealthCheck({
-      path: '/',
+      path: '/', //health check root
       interval: cdk.Duration.seconds(30),
       timeout: cdk.Duration.seconds(5),
       healthyThresholdCount: 2,
       unhealthyThresholdCount: 2,
     });
 
-    //ADMIN SERVICE
+    //ADMIN SERVICE CONFIGURATION
     const adminRepo = ecr.Repository.fromRepositoryName(this, 'AdminRepo', 'admin-service');
     const adminService = new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'AdminService', {
       cluster,
@@ -111,15 +117,16 @@ export class EcsStack extends cdk.Stack {
           ],
         }),
       },
-      domainName: adminDomain,
-      domainZone: hostedZone,
-      certificate: adminCert,
+      domainName: adminDomain, //assign custom domain name
+      domainZone: hostedZone, //Route53 zone
+      certificate: adminCert, //certificate for HTTPS
       redirectHTTP: true,
       publicLoadBalancer: true,
     });
 
+    // Health check to ensure ECS tasks are responsive, also needed to succesfully finish the deployment
     adminService.targetGroup.configureHealthCheck({
-      path: '/',
+      path: '/', //health check root
       interval: cdk.Duration.seconds(30),
       timeout: cdk.Duration.seconds(5),
       healthyThresholdCount: 2,
