@@ -1,164 +1,125 @@
-Bonus Claim Microservices Infrastructure with AWS CDK
+# Bonus Claim Microservices Infrastructure with AWS CDK
 
-This project sets up a production-ready AWS infrastructure using AWS CDK (in TypeScript) for two Fargate-based microservices: user-service and admin-service. The system uses DynamoDB to store bonus claim records, and the deployment is automated using GitHub Actions.
+This project provisions AWS infrastructure using AWS CDK (in TypeScript) for two microservices: `user-service` and `admin-service`, running on ECS Fargate with DynamoDB integration. All deployments are fully automated through GitHub Actions.
 
-🔧 Infrastructure Overview
+---
 
-VPC: Isolated network using private and public subnets.
+## 🚀 Deployment Instructions (via GitHub Actions)
 
-DynamoDB: On-demand table for storing bonus claims with composite keys.
+### 🔐 Prerequisites
+- A hosted zone for your domain (manually created in Route 53)
+- GitHub repository with the following **Secrets** configured:
+  - `AWS_ACCESS_KEY_ID`
+  - `AWS_SECRET_ACCESS_KEY`
 
-ECS Fargate Services:
+> ✅ No manual CDK or AWS CLI commands are needed beyond initial GitHub setup.
 
-user-service: Accepts and writes bonus claim data.
+### 🚦 Environments
+- `dev`: Automatically deployed when changes are pushed to the `dev` branch.
+- `prod`: Automatically deployed when changes are pushed to the `master` branch.
 
-admin-service: Fetches claim data.
+Each environment has fully isolated AWS resources.
 
-ALB: Application Load Balancer for each service.
+### 🔄 Workflow Summary
+On each push to `dev` or `master`:
+1. GitHub Actions installs dependencies and CDK.
+2. Builds and pushes Docker images to ECR.
+3. Bootstraps AWS environment if needed.
+4. Deploys VPC, DynamoDB, ECS Services with ALBs.
 
-IAM Roles: Strictly scoped to service-level needs.
+---
 
-🚀 Deployment Instructions
+## 🔍 Testing ECS Endpoints
 
-1. Prerequisites
-
-AWS CLI configured with sufficient permissions
-
-CDK CLI installed: npm install -g aws-cdk
-
-Docker installed and running
-
-Node.js 18+ and npm installed
-
-A domain (optional for DNS setup)
-
-2. Bootstrap CDK (first time only)
-
-cdk bootstrap
-
-3. Deploy (Local)
-
-# For development environment
-cdk deploy --all --require-approval never --context env=dev
-
-# For production environment
-cdk deploy --all --require-approval never --context env=prod
-
-4. Deploy via GitHub Actions
-
-Push to:
-
-dev branch to deploy dev environment
-
-master branch to deploy prod environment
-
-GitHub Actions will:
-
-Build the services
-
-Push Docker images to ECR
-
-Deploy infrastructure via CDK
-
-🔍 Testing ECS Endpoints
-
-After deployment, CDK will output ALB URLs like:
-
+After deployment, CDK will output URLs like:
+```
 User Service URL: http://Everyr-UserS-xxxxx.us-east-1.elb.amazonaws.com
 Admin Service URL: http://Everyr-Admin-xxxxx.us-east-1.elb.amazonaws.com
+```
 
-Test Health Check
-
+### ✅ Test Health
+```bash
 curl http://<USER_SERVICE_URL>/health
 curl http://<ADMIN_SERVICE_URL>/health
+```
 
-Test Bonus Claim
-
+### 🎁 Test Bonus Claim
+```bash
 # Add bonus claim
 curl -X POST http://<USER_SERVICE_URL>/add-bonus-claim
 
 # Get bonus claim
 curl http://<ADMIN_SERVICE_URL>/get-bonus-claim
+```
 
-🧩 DynamoDB Schema
+---
 
-Table: BonusClaimsTable
+## 🧩 DynamoDB Table Schema
 
-PK (Partition Key): USER#<user_id>
+### Table: `BonusClaimsTable`
+- **PK** (Partition Key): `USER#<user_id>`
+- **SK** (Sort Key): `BONUS#<bonus_id>`
+- **status**: CLAIMED | REDEEMED | etc.
+- **timestamp**: ISO 8601 string
 
-SK (Sort Key): BONUS#<bonus_id>
-
-status: CLAIMED / REDEEMED / etc.
-
-timestamp: ISO string timestamp
-
-Sample Item Inserted (via Lambda):
-
+### Sample Data Inserted via Lambda
+```json
 {
   "PK": { "S": "USER#100" },
   "SK": { "S": "BONUS#DEMO" },
   "status": { "S": "CLAIMED" },
   "timestamp": { "S": "2025-04-06T12:00:00Z" }
 }
+```
 
-🧠 Architectural Decisions
+---
 
-Environment Separation
+## 🧠 Architectural Decisions
 
-Used context variables and stack naming to isolate dev and prod.
+### Full CDK Infrastructure
+- VPC, DynamoDB, ECS, IAM roles, ALBs all provisioned with CDK.
 
-Each environment deploys to separate resources.
+### Environment Isolation
+- Separate `dev` and `prod` stacks (e.g. `EveryrealmVpcStackDev` vs. `EveryrealmVpcStackProd`).
+- Triggered via branch names (`dev`, `master`).
 
-No .env Files
+### IAM Least Privilege
+- Separate IAM roles for each service with restricted permissions.
 
-Environment configuration is fully managed by CDK and GitHub secrets.
+### ECR Images
+- Docker images built only when service code changes.
+- Uploaded to AWS ECR under `user-service` and `admin-service`.
 
-IAM Security
+### Manual Hosted Zone
+- Domain/Route53 setup is the **only manual step** per project requirements.
 
-Each service has its own IAM role scoped to the table.
+---
 
-Docker Builds
+## ⚙️ GitHub Actions Overview
 
-Dockerfiles are minimal and separate for each service.
+### Workflow File
+`.github/workflows/deploy.yml`
 
-Rebuilds triggered only if the corresponding service changes.
+### Key Features
+- Auto-deploys on push to `dev` or `master`
+- Dynamically determines environment (`ENV`) based on branch
+- Bootstraps CDK environment automatically
+- Uses GitHub secrets for credentials
+- CDK deployed with `--require-approval never`
 
-Hosted Zone
+### Environment Variables
+```yaml
+env:
+  AWS_REGION: us-east-1
+  USER_SERVICE_REPO: user-service
+  ADMIN_SERVICE_REPO: admin-service
+  ENV: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+```
 
-Hosted zone and DNS records setup is the only manual step.
+---
 
-🛠 GitHub Actions Pipeline
-
-File: .github/workflows/deploy.yml
-
-Trigger:
-
-On push to dev or master
-
-Steps:
-
-Checkout source
-
-Install dependencies and CDK CLI
-
-Configure AWS credentials from GitHub secrets
-
-Build CDK project
-
-Build & push Docker images to ECR
-
-Deploy the CDK stack with appropriate context (env=dev or env=prod)
-
-Secrets
-
-AWS_ACCESS_KEY_ID
-
-AWS_SECRET_ACCESS_KEY
-
-AWS_REGION (can be hardcoded in workflow)
-
-📁 Project Structure
-
+## 📁 Project Structure
+```
 .
 ├── bin/
 │   └── everyrealm-cdk-task.ts
@@ -173,14 +134,15 @@ AWS_REGION (can be hardcoded in workflow)
 │   └── insert-items.ts
 └── .github/
     └── workflows/deploy.yml
+```
 
-✅ Future Improvements
+---
 
-Add automated rollback for failed deploys
+## ✅ Improvements for Production Readiness
+- Add HTTPS support and domain config via CDK
+- Add monitoring via CloudWatch dashboards
+- Enable rollback strategies for failed deployments
 
-Add domain and HTTPS support via CDK
+---
 
-Add monitoring with CloudWatch dashboards
-
-Feel free to open issues or contribute. Happy deploying! 🚀
-
+Happy deploying with CDK and GitHub Actions! 🎉
