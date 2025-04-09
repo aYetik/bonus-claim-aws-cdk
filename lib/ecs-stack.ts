@@ -87,6 +87,17 @@ export class EcsStack extends cdk.Stack {
       publicLoadBalancer: true, //make the load balancer public (internet-facing)
     });
 
+    // Add auto-scaling for UserService
+    const userScaling = userService.service.autoScaleTaskCount({
+      minCapacity: 1, // Minimum number of tasks
+      maxCapacity: 5, // Maximum number of tasks
+    });
+
+    // Scale based on CPU utilization
+    userScaling.scaleOnCpuUtilization('UserCpuScaling', {
+      targetUtilizationPercent: 50, // Scale when CPU utilization exceeds 50%
+    });
+
     // Health check to ensure ECS tasks are responsive, also needed to succesfully finish the deployment
     userService.targetGroup.configureHealthCheck({
       path: '/', //health check root
@@ -134,6 +145,17 @@ export class EcsStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(5),
       healthyThresholdCount: 2,
       unhealthyThresholdCount: 2,
+    });
+
+    // Add auto-scaling for AdminService
+    const adminScaling = adminService.service.autoScaleTaskCount({
+      minCapacity: 1,
+      maxCapacity: 5,
+    });
+    
+    // Scale based on CPU utilization
+    adminScaling.scaleOnCpuUtilization('AdminCpuScaling', {
+      targetUtilizationPercent: 50, //scale when CPU utilization exceeds 50%
     });
   }
 }
