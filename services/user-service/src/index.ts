@@ -3,7 +3,7 @@ import { DynamoDBClient, PutItemCommand } from '@aws-sdk/client-dynamodb';
 
 const app = express();
 const port = process.env.PORT || 3000;
-const dynamoClient = new DynamoDBClient({ region: 'us-east-1' });
+const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 app.use(express.json());
 
