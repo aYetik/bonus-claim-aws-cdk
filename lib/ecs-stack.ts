@@ -59,21 +59,21 @@ export class EcsStack extends cdk.Stack {
     //USER SERVICE CONFIGURATION
     const userRepo = ecr.Repository.fromRepositoryName(this, 'UserRepo', 'user-service');
     const userService = new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'UserService', {
-      cluster,
-      cpu: 256,
+      cluster, //shared cluster where the fargate service will run
+      cpu: 256, //allocates 256 CPU units (0.25 vCPU) to the task
       memoryLimitMiB: 512,
-      desiredCount: 1,
-      taskSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      desiredCount: 1, //number of tasks to run (1 for development, 2 for production would be better for high availability) (this is the minimum number of tasks to run -- auto scaling can override this)
+      taskSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }, //subnets where the tasks will run (private subnets for security but can still access the internet through NAT gateway)
       taskImageOptions: {
-        image: ecs.ContainerImage.fromEcrRepository(userRepo, 'latest'),
+        image: ecs.ContainerImage.fromEcrRepository(userRepo, 'latest'), //specifies the docker image to use (latest version of the image in ECR)
         containerPort: 3000,
         environment: {
           TABLE_NAME: props.table.tableName,
           AWS_REGION: props.region,
-          DEPLOYMENT_HASH: deploymentHash,
+          DEPLOYMENT_HASH: deploymentHash, //TODO: make this a hash of the code instead of a timestamp to avoid unnecessary deployments
         },
         taskRole,
-        executionRole: new iam.Role(this, 'UserServiceExecutionRole', {
+        executionRole: new iam.Role(this, 'UserServiceExecutionRole', { //role for ECS tasks to pull images from ECR
           assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
           managedPolicies: [
             iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryReadOnly'),
@@ -84,7 +84,7 @@ export class EcsStack extends cdk.Stack {
       domainZone: hostedZone, //Route53 zone
       certificate: userCert, //certificate for HTTPS
       redirectHTTP: true,
-      publicLoadBalancer: true,
+      publicLoadBalancer: true, //make the load balancer public (internet-facing)
     });
 
     // Health check to ensure ECS tasks are responsive, also needed to succesfully finish the deployment
