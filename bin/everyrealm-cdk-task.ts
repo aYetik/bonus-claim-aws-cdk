@@ -8,8 +8,8 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 const app = new cdk.App();
 // Get the environment (dev/prod) from context, default to 'dev' (context is provided in pipeline depending on the branch)
 const envType = (app.node.tryGetContext('env') || 'dev') as 'dev' | 'prod';
-// Set the AWS region (static for now)
-const region = 'us-east-1';
+// Set the AWS region (default to 'us-east-1' if not set in the environment variables)
+const region = process.env.AWS_REGION || 'us-east-1';
 
 const envConfig = {
   dev: {
